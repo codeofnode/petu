@@ -1,0 +1,36 @@
+{
+  "name": "petu",
+  "description": "Collection of pure javascript utilities to cut your lines of code",
+  "version": "0.0.1",
+  "keywords": [
+    "purejs",
+    "helping",
+    "simple",
+    "utility"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/codeofnode/petu.git"
+  },
+  "bugs": {
+    "url": "https://github.com/codeofnode/petu/issues"
+  },
+  "devDependencies": {
+    "mocha": "^2.x.x"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "http://www.opensource.org/licenses/MIT"
+    }
+  ],
+  "homepage": "https://github.com/codeofnode/petu",
+  "scripts": {
+    "test": "mocha -b test"
+  },
+  "author": {
+    "name": "Ramesh Kumar",
+    "email": "codeofnode@gmail.com"
+  },
+  "license": "MIT"
+}
