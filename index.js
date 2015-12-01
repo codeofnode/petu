@@ -57,22 +57,25 @@
     },
 
 
-    walkInto : function(obj, fun, filter, onlyOne, maxCount, root, key, count){
+    walkInto : function(obj, fun, filter, opts, maxCount, root, key, count){
       var pass = false;
+      if(opts === true) opts = { onlyOne : true };
+      else if(!this.isObject(opts)) opts = {};
       if(!this.isFunction(fun)) return pass;
       if(!this.isNumber(maxCount)) maxCount = 999;
       if(!this.isNumber(count)) count = 0;
-      if(this.isObject(obj,true,true) && count < maxCount){
-        if((root || count) && ((!this.isFunction(filter) || filter(obj, key, root, count))
-            || (!this.isObject(filter,true,true) || this.isPassingFilter(obj, filter)))){
-          pass = true;
-          fun(obj, key, root, count);
-        }
+      var isObj = this.isObject(obj,true,true);
+      if((!opts.onlyObject || isObj) && (opts.addRoot || root || count) && (!this.isFunction(filter) || filter(obj, key, root, count))
+          && (!this.isObject(filter,true,true) || this.isPassingFilter(obj, filter))){
+        pass = true;
+        fun(obj, key, root, count);
+      }
+      if(isObj && count < maxCount){
         count++;
         var keys = Object.keys(obj);
         for(var ok = false, z=0,len=keys.length;z<len;z++){
-          ok = this.walkInto(obj[keys[z]], fun, filter, onlyOne, maxCount, obj, keys[z], count);
-          if(onlyOne && ok) {
+          ok = this.walkInto(obj[keys[z]], fun, filter, opts, maxCount, obj, keys[z], count);
+          if(opts.onlyOne && ok) {
             break;
           }
         }
@@ -85,18 +88,18 @@
       if(!this.isString(fields)) return;
       var fields = fields.trim().split(' '), isNumber = this.isNumber.bind(this);
       if(!fields.length) return;
-      this.walkInto(obj, function(obj,key,root){
-        if(Array.isArray(root)){
-          if(fields.indexOf(String(key)) !== -1){
-            var ind = Number(key);
-            if(isNumber(ind)){
-              root.splice(ind,1);
+      this.walkInto(obj, function(obj,ind){
+        var isAr = Array.isArray(obj);
+        for(var z=0,len=fields.length;z<len;z++){
+          if(fields[z].length){
+            if(isAr){
+              obj.splice(Number(ind),1);
+            } else if(obj.hasOwnProperty(fields[z])){
+              delete obj[fields[z]];
             }
           }
-        } else if(fields.indexOf(key) !== -1){
-          delete root[key];
         }
-      }, null,null,null,obj);
+      }, null,{ onlyObject : true, addRoot : true });
     },
 
 

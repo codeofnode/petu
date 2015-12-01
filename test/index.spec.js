@@ -5,9 +5,11 @@ var assert = require('assert'),
 
 var test = function(func,args,exp,perf){
   if(!Array.isArray(args)) args = [args];
-  for(var z=0,len=test.length;z<len;z++){
-    assert[perf || 'equal'](petu[func].apply(petu,args),exp);
-  }
+  if(Array.isArray(exp)){
+    for(var z=0,len=exp.length;z<len;z++){
+      assert[perf || 'equal'](petu[func].apply(petu,args),exp[z]);
+    }
+  } else assert[perf || 'equal'](petu[func].apply(petu,args),exp);
 };
 
 describe('petu', function() {
@@ -141,15 +143,15 @@ describe('petu', function() {
     describe(now, function() {
       it('no parameter passed',function(){
         var ok = true;
-        func([undefined,function(){ ok = false; }],undefined);
+        func([undefined,function(){ ok = false; }],false);
         assert(ok);
       });
       it('normal test',function(){
-        var ok = false;
+        var ok = 0;
         func([{a : 'b', c : [{ d : 'e' }], f: { g: 'h' } },function(a,b,c,d){
-          ok = true;
-        }],undefined);
-        assert(ok);
+          ok++;
+        }],false);
+        assert.equal(ok,6);
       });
     });
   })();
