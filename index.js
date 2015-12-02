@@ -1,8 +1,7 @@
 (function () {
   'use strict';
 
-  function Petu(){
-  }
+  var PETU_SEP = '.';
 
   var proto = {
 
@@ -57,24 +56,27 @@
     },
 
 
-    walkInto : function(obj, fun, filter, opts, maxCount, root, key, count){
+    walkInto : function(obj, fun, filter, opts, maxCount, root, key, path, count){
       var pass = false;
       if(opts === true) opts = { onlyOne : true };
       else if(!this.isObject(opts)) opts = {};
       if(!this.isFunction(fun)) return pass;
       if(!this.isNumber(maxCount)) maxCount = 999;
       if(!this.isNumber(count)) count = 0;
+      if(!this.isString(path)) path = '$';
       var isObj = this.isObject(obj,true,true);
-      if((!opts.onlyObject || isObj) && (opts.addRoot || root || count) && (!this.isFunction(filter) || filter(obj, key, root, count))
+      if((!opts.onlyObject || isObj) && (opts.addRoot || root || count) && (!this.isFunction(filter) || filter(obj, key, root, path, count))
           && (!this.isObject(filter,true,true) || this.isPassingFilter(obj, filter))){
         pass = true;
-        fun(obj, key, root, count);
+        fun(obj, key, root, path, count);
       }
       if(isObj && count < maxCount){
+        if(!this.isString(opts.petuSeparator)) opts.petuSeparator = this.petuSeparator;
+        if(!this.isString(opts.petuSeparator)) opts.petuSeparator = PETU_SEP;
         count++;
         var keys = Object.keys(obj);
         for(var ok = false, z=0,len=keys.length;z<len;z++){
-          ok = this.walkInto(obj[keys[z]], fun, filter, opts, maxCount, obj, keys[z], count);
+          ok = this.walkInto(obj[keys[z]], fun, filter, opts, maxCount, obj, keys[z], (path+opts.petuSeparator+keys[z]), count);
           if(opts.onlyOne && ok) {
             break;
           }
@@ -130,105 +132,34 @@
 
 
     copy : function(obj, source,over,func){
+      var separ = '--petu-->';
       if(this.isObject(obj,true,true)){
-        var isObject = this.isObject.bind(this), ptrs = [null,obj], walk = this.walkInto.bind(this),
-          isFunction = this.isFunction.bind(this), isFound = this.isFound.bind(this);
-        this.walkInto(source,function(val,key,root,count){
-          var np = null;
+        var isObject = this.isObject.bind(this), ptrs = { $ : obj }, walk = this.walkInto.bind(this),
+          chopRight = this.chopRight.bind(this), isFunction = this.isFunction.bind(this), isFound = this.isFound.bind(this);
+        this.walkInto(source,function(val,key,root,path){
+          var np = null, prev = chopRight(path,separ);
           if(isObject(val,true,true)){
-            if(!isFound(ptrs[count+1])){
+            if(!isFound(ptrs[path])){
               if(Array.isArray(val)) np = new Array(root.length);
               else np = {};
-              ptrs.push(np);
-              ptrs[count][key] = np;
+              ptrs[path] = np;
+              ptrs[prev][key] = np;
             }
           } else {
-            var pointer = ptrs[count];
-            if(isFound(pointer) && (over || !pointer.hasOwnProperty(key)) && (!isFunction(func) || func(val))){
+            var pointer = ptrs[prev];
+            if(isFound(pointer) && (over || !pointer.hasOwnProperty(key)) && (!isFunction(func) || func(val,key,root,path))){
               pointer[key] = val;
             }
           }
-        });
+        }, null, { petuSeparator : separ });
       }
     },
 
 
-    reachAtPath : function(obj, path, options) {
-      var PATH_NOT_RESOLVED = 'PETU_PATH_NOT_RESOLVED';
-      if(!this.isObject(options)) options = {};
-      if(this.isFound(options.notFound)) PATH_NOT_RESOLVED = options.notFound;
-      if(!this.isObject(obj)) return PATH_NOT_RESOLVED;
-      if(!(/^[a-z_A-Z0-9\.\*\]\[]*$/.test(path))){
-        return PATH_NOT_RESOLVED;
-      }
-
-      var chop = 0;
-      if(path.charAt(0) === '$') {
-        chop++;
-        if(path.charAt(1) === '.') chop++;
-      }
-      path = path.substring(chop);
-
-      var root = obj, point = obj, key = '', nextIndex, start=0, end=0, keys;
-
-      while(path.length){
-        nextIndex = start = end = 0; chop = 1;
-        if(path.charAt(0) === '['){
-          start++;
-          nextIndex = path.indexOf(']');
-          if(nextIndex === -1) break;
-          end = nextIndex;
-          if(path.charAt(nextIndex+1) === '.') nextIndex++;
-          if(path.charAt(start) === "'" && path.charAt(end-1) === "'"){
-            start++; end++;
-          }
-        } else {
-          nextIndex = path.indexOf('.');
-          chop = path.indexOf('[');
-          if(chop !== -1 && nextIndex > chop){
-            nextIndex = chop;
-            chop = 0;
-          } else {
-            chop = 1
-          }
-          end = nextIndex;
-        }
-        nextIndex = (nextIndex + chop);
-        if(end !== -1){
-          key = path.substring(start,end);
-          if(key.length) {
-            if(!options.noStar && key === '*'){
-              if(Array.isArray(point)){
-                if(point.length){
-                  key = 0;
-                } else break;
-              } else {
-                keys = Object.keys(point);
-                if(keys.length){
-                   key = keys[0];
-                }
-              }
-            }
-          } else {
-            break;
-          }
-        } else {
-          key = path;
-        }
-        if(options.getRoot) root = point;
-        point = point[key];
-        if(end === -1) break;
-        if(point === undefined) return PATH_NOT_RESOLVED;
-        else path = path.substring(nextIndex);
-      }
-      if(options.getRoot) {
-        return {
-          point : point,
-          root : root,
-          key : key
-        };
-      } else {
-        return point;
+    chopRight : function(str,chr){
+      if(this.isString(str) && this.isString(chr)){
+        var lastInd = str.lastIndexOf(chr);
+        return str.substring(0,lastInd);
       }
     },
 
@@ -454,51 +385,21 @@
     },
 
 
-    extractPatterns : function(obj,expected) {
-      if(!this.isObject(obj)) return {};
-      var ar = {}; var path = '';
-      var isRightPattern = this.isRightPattern;
-      function inc(k,root) {
-        if(Array.isArray(root)) path += ('[' + k + ']');
-        else if(path) path += ('.' + k);
-        else path = k;
-      }
-      function dec(root) {
-        if(path) {
-          path = path.substring(0, path.lastIndexOf(Array.isArray(root) ? '[' : '.'));
-        }
-      }
-      function scan(obj) {
-        var k,v;
-        if (obj instanceof Object) {
-          for (k in obj){
-            if (obj.hasOwnProperty(k)){
-              v = obj[k];
-              if(typeof(v) === 'string') {
-                if(isRightPattern(v,expected)) {
-                  inc(k,obj);
-                  ar[path] = v;
-                  dec();
-                }
-              } else if(v && typeof(v) === 'object') {
-                inc(k,obj);
-                scan(obj[k]);
-                dec(obj);
-              }
-            }
-          }
-        }
-      }
-      scan(obj);
-      return ar;
-    },
-
-
     escapeRegExp : function(string) {
       return this.stringify(string).replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
     }
 
   };
+
+  function Petu(opts){
+    if(proto.isString(opts)) opts = { petuSeparator : opts };
+    else if(!proto.isObject(opts)) opts = { petuSeparator : PETU_SEP };
+    else if(!proto.isString(opts.petuSeparator)) opts.petuSeparator = PETU_SEP;
+    var allowed = ['petuSeparator'];
+    proto.copy(this,opts,true,function(val,key){
+      return allowed.indexOf(key) !== -1;
+    });
+  }
 
   Petu.prototype = proto;
 
