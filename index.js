@@ -370,25 +370,6 @@
     },
 
 
-    countNoOfChars : function(word,letter){
-      var count = 0;
-      word = this.stringify(word);
-      for (var i = 0; i < word.length; i++) {
-        if (word.charAt(i) === letter) count++;
-      }
-      return count;
-    },
-
-
-    isRightPattern : function(actual, expected){
-      if(this.isFunction(expected)){
-        return expected(actual);
-      } else {
-        return actual === expected;
-      }
-    },
-
-
     escapeRegExp : function(string) {
       return this.stringify(string).replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
     }
