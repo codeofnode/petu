@@ -131,13 +131,17 @@
     },
 
 
-    copy : function(obj, source,over,func){
+    copy : function(obj, source,opts,func){
       var separ = '--petu-->';
+      if(opts === true) opts = { over : opts, petuSeparator : separ };
+      else if(this.isString(opts)) opts = { petuSeparator : opts };
+      else if(!this.isObject(opts)) opts = { petuSeparator : separ };
+      else if(!this.isString(opts.petuSeparator)) opts.petuSeparator = separ;
       if(this.isObject(obj,true,true)){
         var isObject = this.isObject.bind(this), ptrs = { $ : obj }, walk = this.walkInto.bind(this),
           chopRight = this.chopRight.bind(this), isFunction = this.isFunction.bind(this), isFound = this.isFound.bind(this);
         this.walkInto(source,function(val,key,root,path){
-          var np = null, prev = chopRight(path,separ);
+          var np = null, prev = chopRight(path,opts.petuSeparator);
           if(isObject(val,true,true)){
             if(!isFound(ptrs[path])){
               if(Array.isArray(val)) np = new Array(root.length);
@@ -147,11 +151,11 @@
             }
           } else {
             var pointer = ptrs[prev];
-            if(isFound(pointer) && (over || !pointer.hasOwnProperty(key)) && (!isFunction(func) || func(val,key,root,path))){
+            if(isFound(pointer) && (opts.over || !pointer.hasOwnProperty(key)) && (!isFunction(func) || func(val,key,root,path))){
               pointer[key] = val;
             }
           }
-        }, null, { petuSeparator : separ });
+        }, null, { petuSeparator : opts.petuSeparator });
       }
     },
 
