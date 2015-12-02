@@ -88,12 +88,15 @@
       if(!this.isString(fields)) return;
       var fields = fields.trim().split(' '), isNumber = this.isNumber.bind(this);
       if(!fields.length) return;
-      this.walkInto(obj, function(obj,ind){
+      this.walkInto(obj, function(obj){
         var isAr = Array.isArray(obj);
         for(var z=0,len=fields.length;z<len;z++){
           if(fields[z].length){
             if(isAr){
-              obj.splice(Number(ind),1);
+              var num = Number(fields[z]);
+              if(isNumber(num)){
+                obj.splice(num,1);
+              }
             } else if(obj.hasOwnProperty(fields[z])){
               delete obj[fields[z]];
             }
@@ -107,7 +110,7 @@
       if(this.isObject(obj,true,true) && this.isObject(filter,true,true)){
         var keys = Object.keys(filter), len = keys.length;
         for(var z=0;z<len;z++){
-          if(source[keys[z]] !== filter[keys[z]]){
+          if(obj[keys[z]] !== filter[keys[z]]){
             return false;
           }
         }
@@ -126,19 +129,22 @@
     },
 
 
-    copy : function(source,obj,over,func){
-      if(this.isObject(source,true,true)){
-        var isObject = this.isObject.bind(this), pointer = source, isFunction = this.isFunction.bind(this);
-        this.walkInto(source,function(val,key,root){
-          if((over || !pointer.hasOwnProperty(key)) && (!isFunction(func) || func(val))){
-            if(isObject(val,true,true)) {
-              if(Array.isArray(val)) {
-                pointer[key] = new Array(val.length);
-              } else {
-                pointer[key] = {};
-              }
-              pointer = pointer[key];
-            } else {
+    copy : function(obj, source,over,func){
+      if(this.isObject(obj,true,true)){
+        var isObject = this.isObject.bind(this), ptrs = [null,obj], walk = this.walkInto.bind(this),
+          isFunction = this.isFunction.bind(this), isFound = this.isFound.bind(this);
+        this.walkInto(source,function(val,key,root,count){
+          var np = null;
+          if(isObject(val,true,true)){
+            if(!isFound(ptrs[count+1])){
+              if(Array.isArray(val)) np = new Array(root.length);
+              else np = {};
+              ptrs.push(np);
+              ptrs[count][key] = np;
+            }
+          } else {
+            var pointer = ptrs[count];
+            if(isFound(pointer) && (over || !pointer.hasOwnProperty(key)) && (!isFunction(func) || func(val))){
               pointer[key] = val;
             }
           }

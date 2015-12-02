@@ -14,6 +14,19 @@ var test = function(func,args,exp,perf){
 
 describe('petu', function() {
   (function(){
+    var now = 'isEmpty';
+    var func = test.bind(undefined,now);
+    describe(now, function() {
+      it('no parameter passed',function(){
+        func([[]],true);
+      });
+      it('empty object',function(){
+        func([{}],true);
+      });
+    });
+  })();
+
+  (function(){
     var now = 'isNumber';
     var func = test.bind(undefined,now);
     describe(now, function() {
@@ -152,6 +165,73 @@ describe('petu', function() {
           ok++;
         }],false);
         assert.equal(ok,6);
+      });
+      it('normal test with root',function(){
+        var ok = 0;
+        func([{a : 'b', c : [{ d : 'e' }], f: { g: 'h' } },function(a,b,c,d){
+          ok++;
+        },null,null,null,true],true);
+        assert.equal(ok,7);
+      });
+      it('normal test with only one',function(){
+        var ok = 0;
+        func([{a : 'b', c : [{ d : 'e' }], f: { g: 'h' } },function(a,b,c,d){
+          ok++;
+        },null,true],false);
+        assert.equal(ok,1);
+      });
+    });
+  })();
+
+  (function(){
+    var now = 'removeProperties';
+    var func = test.bind(undefined,now);
+    describe(now, function() {
+      it('no parameter passed',function(){
+        func([],undefined);
+      });
+      it('simple object',function(){
+        var abc = {a : 'b', c : [{ d : 'e', g : 'b' }], f: { g: 'h' } };
+        func([abc,'g'],undefined);
+        assert.deepEqual(abc,{a : 'b', c : [{ d : 'e' }], f: { } });
+      });
+      it('simple array',function(){
+        var abc = {a : 'b', c : [{ d : 'e' }, { g : 'b' }, 3], n : [1,2,3,4], f: { g: 'h' } };
+        func([abc,'1'],undefined);
+        assert.deepEqual(abc,{a : 'b', c : [{ d : 'e' },3], n: [1,3,4], f: { g: 'h' } });
+      });
+    });
+  })();
+
+  (function(){
+    var now = 'isPassingFilter';
+    var func = test.bind(undefined,now);
+    describe(now, function() {
+      it('no parameter passed',function(){
+        func([],false);
+      });
+      it('simple object',function(){
+        var abc = {a : 'b', f: { g: 'h' } };
+        func([abc,{ a: 'b' }],true);
+      });
+      it('simple object falsy',function(){
+        var abc = {a : 'b', f: { g: 'h' } };
+        func([abc,{ a: 'b3' }],false);
+      });
+    });
+  })();
+
+  (function(){
+    var now = 'copy';
+    var func = test.bind(undefined,now);
+    describe(now, function() {
+      it('no parameter passed',function(){
+        func([],undefined);
+      });
+      it('copy',function(){
+        var db = {}, abc = {a : 'b', c : [{ d : 'e', g : 'b' }], f: { g: 'h' } };
+        func([db,abc],undefined);
+        assert.deepEqual(db,abc);
       });
     });
   })();
