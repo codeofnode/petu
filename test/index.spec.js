@@ -170,7 +170,7 @@ describe('petu', function() {
         var ok = 0;
         func([{a : 'b', c : [{ d : 'e' }], f: { g: 'h' } },function(a,b,c,d){
           ok++;
-        },null,null,null,true],true);
+        },null,null,true],true);
         assert.equal(ok,7);
       });
       it('normal test with only one',function(){
@@ -200,6 +200,12 @@ describe('petu', function() {
         func([abc,'1'],undefined);
         assert.deepEqual(abc,{a : 'b', c : [{ d : 'e' },3], n: [1,3,4], f: { g: 'h' } });
       });
+      it('circular object',function(){
+        var b = {a : 'd', n : 56};
+        b.c = b;
+        func([b,'n'],undefined);
+        assert.equal(b.n,undefined);
+      });
     });
   })();
 
@@ -222,8 +228,7 @@ describe('petu', function() {
   })();
 
   (function(){
-    var now = 'copy';
-    var func = test.bind(undefined,now);
+    var now = 'copy'; var func = test.bind(undefined,now);
     describe(now, function() {
       it('no parameter passed',function(){
         func([],undefined);
@@ -232,6 +237,150 @@ describe('petu', function() {
         var db = {}, abc = {a : 'b', c : [{ d : 'e', g : 'b' }], f: { g: 'h' } };
         func([db,abc],undefined);
         assert.deepEqual(db,abc);
+      });
+      it('circular object',function(){
+        var b = {a : 'd', n : 56};
+        b.c = b;
+        var z = {};
+        func([z,b],undefined);
+      });
+    });
+  })();
+
+  (function(){
+    var now = 'isPassingFilter';
+    var func = test.bind(undefined,now);
+    describe(now, function() {
+      it('no parameter passed',function(){
+        func([],false);
+      });
+      it('simple',function(){
+        var a = { a: 'b', c : 1, d : false }, b = { d : false };
+        func([a,b],true);
+      });
+      it('negative',function(){
+        var a = { a: 'b', c : 1, d : false }, b = { s : 'k' };
+        func([a,b],false);
+      });
+    });
+  })();
+
+  (function(){
+    var now = 'getString';
+    var func = test.bind(undefined,now);
+    describe(now, function() {
+      it('no parameter passed',function(){
+        func([],'undefined');
+      });
+      it('string',function(){
+        func(['hello'],'hello');
+      });
+      it('function',function(){
+        func([function(a,b){ return a+b; },['a','b']],'ab');
+      });
+    });
+  })();
+
+  (function(){
+    var now = 'eachSeries';
+    var func = test.bind(undefined,now);
+    describe(now, function() {
+      this.timeout(6000);
+      it('no parameter passed',function(){
+        func([],undefined);
+      });
+      it('simple without break',function(done){
+        var count = 0;
+        var arr = [0,1,2,3,4]
+        func([arr, function(item,cb){
+          if(count === item) {
+            count++;
+          }
+          setTimeout(cb,(1000-(item+1)*(((item%2===0)?(-100):100))));
+        }, function(err){
+          assert.equal(err,null);
+          assert.equal(count,5);
+          done();
+        }], undefined);
+      });
+      it('simple with error with breakOnError',function(done){
+        var count = 0;
+        var arr = [0,1,2,3,4];
+        func([arr, function(item,cb){
+          count++;
+          setTimeout(cb.bind(undefined,(item === 2 ? item : null),((item+1)*100)));
+        }, function(err){
+          assert.equal(err,2);
+          assert.equal(count,3);
+          done();
+        }], undefined);
+      });
+      it('simple with error without breakOnError',function(done){
+        var count = 0;
+        var arr = [0,1,2,3,4];
+        func([arr, function(item,cb){
+          count++;
+          setTimeout(cb.bind(undefined,(item === 2 ? item : null),((item+1)*100)));
+        }, false, function(err){
+          assert.equal(err,2);
+          assert.equal(count,5);
+          done();
+        }], undefined);
+      });
+    });
+  })();
+
+  (function(){
+    var now = 'series';
+    var func = test.bind(undefined,now);
+    describe(now, function() {
+      this.timeout(6000);
+      it('no parameter passed',function(){
+        func([],undefined);
+      });
+      it('simple without break',function(done){
+        var count = 0, arr = [];
+        var arry = [0,1,2,3,4].forEach(function(item){
+          arr.push(function(item,cb){
+            if(count === item) {
+              count++;
+            }
+            setTimeout(cb,(1000-(item+1)*(((item%2===0)?(-100):100))));
+          }.bind(null,item));
+        });
+        func([arr, function(err){
+          assert.equal(err,null);
+          assert.equal(count,5);
+          done();
+        }], undefined);
+      });
+      it('simple with error with breakOnError',function(done){
+        var count = 0, arr = [];
+        var arry = [0,1,2,3,4].forEach(function(item){
+          arr.push(function(item,cb){
+            count++;
+            setTimeout(cb.bind(undefined,(item === 2 ? item : null),((item+1)*100)));
+          }.bind(null,item));
+        });
+        func([arr, function(err){
+          assert.equal(err,2);
+          assert.equal(count,3);
+          done();
+        }], undefined);
+      });
+      it('simple with error without breakOnError',function(done){
+        var count = 0, arr = [];
+        var arry = [0,1,2,3,4].forEach(function(item){
+          arr.push(function(item,cb){
+            count++;
+            setTimeout(cb.bind(undefined,(item === 2 ? item : null),((item+1)*100)));
+          }.bind(null,item));
+        });
+        func([arr, false, function(err){
+          assert.equal(err,2);
+          assert.equal(count,5);
+          done();
+        }], undefined);
       });
     });
   })();

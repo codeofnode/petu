@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  var PETU_SEP = '.';
+  var PETU_SEP = '.', INT_SEP = '--petu-->', MAX_DEEP = 9;
 
   var proto = {
 
@@ -24,6 +24,42 @@
 
     isFound : function(a){
       return (a !== undefined && a !== null);
+    },
+
+
+    fixOptions : function(options,sep,bool){
+      var mapping = { 'String' : 'petuSeparator', 'Number' : 'maxDeep' };
+      if(this.isString(bool)) mapping['Boolean'] = bool;
+      var opts = proto.getOptions(options,null,mapping);
+      if(!proto.isNumber(opts.maxDeep)) opts.maxDeep = proto.isNumber(this.maxDeep) ? this.maxDeep : MAX_DEEP;
+      if(!proto.isString(opts.petuSeparator)) opts.petuSeparator = proto.stringify(this.petuSeparator || sep || PETU_SEP);
+      return opts;
+    },
+
+
+    getOptions : function(opt, next, field, type){
+      var def = {}, last = {};
+      if(field && !this.isObject(opt)){
+        if(typeof field === 'object'){
+          def = field;
+        } else if(this.isString(field)){
+          def[this.isString(type) ? type : 'isString'] = field;
+        }
+        for(var key in def){
+          if(this.isString(def[key]) && this.isFunction(this['is'+key])){
+            if(this['is'+key](opt)){
+              last[def[key]] = opt;
+            }
+          }
+        }
+      } else last = opt;
+      if(next) return [last,next];
+      else return last;
+    },
+
+
+    isBoolean : function(a){
+      return (typeof a === 'boolean');
     },
 
 
@@ -56,27 +92,24 @@
     },
 
 
-    walkInto : function(obj, fun, filter, opts, maxCount, root, key, path, count){
+    walkInto : function(obj, fun, filter, options, root, key, path, count){
+      var opts = this.fixOptions(options,null,'onlyOne');
       var pass = false;
-      if(opts === true) opts = { onlyOne : true };
-      else if(!this.isObject(opts)) opts = {};
       if(!this.isFunction(fun)) return pass;
-      if(!this.isNumber(maxCount)) maxCount = 999;
       if(!this.isNumber(count)) count = 0;
       if(!this.isString(path)) path = '$';
       var isObj = this.isObject(obj,true,true);
-      if((!opts.onlyObject || isObj) && (opts.addRoot || root || count) && (!this.isFunction(filter) || filter(obj, key, root, path, count))
+      if((!opts.onlyObject || isObj) && (opts.addRoot || root || count)
+          && (!this.isFunction(filter) || filter(obj, key, root, path, count))
           && (!this.isObject(filter,true,true) || this.isPassingFilter(obj, filter))){
         pass = true;
         fun(obj, key, root, path, count);
       }
-      if(isObj && count < maxCount){
-        if(!this.isString(opts.petuSeparator)) opts.petuSeparator = this.petuSeparator;
-        if(!this.isString(opts.petuSeparator)) opts.petuSeparator = PETU_SEP;
+      if(isObj && count < opts.maxDeep){
         count++;
         var keys = Object.keys(obj);
         for(var ok = false, z=0,len=keys.length;z<len;z++){
-          ok = this.walkInto(obj[keys[z]], fun, filter, opts, maxCount, obj, keys[z], (path+opts.petuSeparator+keys[z]), count);
+          ok = this.walkInto(obj[keys[z]], fun, filter, opts, obj, keys[z], (path+opts.petuSeparator+keys[z]), count);
           if(opts.onlyOne && ok) {
             break;
           }
@@ -86,7 +119,8 @@
     },
 
 
-    removeProperties : function(obj, fields){
+    removeProperties : function(obj, fields, options){
+      var opts = this.fixOptions(options, INT_SEP, 'over');
       if(!this.isString(fields)) return;
       var fields = fields.trim().split(' '), isNumber = this.isNumber.bind(this);
       if(!fields.length) return;
@@ -104,7 +138,7 @@
             }
           }
         }
-      }, null,{ onlyObject : true, addRoot : true });
+      }, null,opts);
     },
 
 
@@ -131,31 +165,29 @@
     },
 
 
-    copy : function(obj, source,opts,func){
-      var separ = '--petu-->';
-      if(opts === true) opts = { over : opts, petuSeparator : separ };
-      else if(this.isString(opts)) opts = { petuSeparator : opts };
-      else if(!this.isObject(opts)) opts = { petuSeparator : separ };
-      else if(!this.isString(opts.petuSeparator)) opts.petuSeparator = separ;
+    copy : function(obj, source,options,filter){
+      var opts = this.fixOptions(options, INT_SEP, 'over');
       if(this.isObject(obj,true,true)){
-        var isObject = this.isObject.bind(this), ptrs = { $ : obj }, walk = this.walkInto.bind(this),
+        var isObject = this.isObject.bind(this), ptrs = { $ : obj },
           chopRight = this.chopRight.bind(this), isFunction = this.isFunction.bind(this), isFound = this.isFound.bind(this);
         this.walkInto(source,function(val,key,root,path){
-          var np = null, prev = chopRight(path,opts.petuSeparator);
-          if(isObject(val,true,true)){
-            if(!isFound(ptrs[path])){
-              if(Array.isArray(val)) np = new Array(root.length);
-              else np = {};
-              ptrs[path] = np;
-              ptrs[prev][key] = np;
-            }
-          } else {
-            var pointer = ptrs[prev];
-            if(isFound(pointer) && (opts.over || !pointer.hasOwnProperty(key)) && (!isFunction(func) || func(val,key,root,path))){
-              pointer[key] = val;
+          if(!isFunction(filter) || filter(val,key,root,path)){
+            var np = null, prev = chopRight(path,opts.petuSeparator);
+            if(isObject(val,true,true)){
+              if(!isFound(ptrs[path])){
+                if(Array.isArray(val)) np = new Array(root.length);
+                else np = {};
+                ptrs[path] = np;
+                ptrs[prev][key] = np;
+              }
+            } else {
+              var pointer = ptrs[prev];
+              if(isFound(pointer) && (opts.over || !pointer.hasOwnProperty(key))){
+                pointer[key] = val;
+              }
             }
           }
-        }, null, { petuSeparator : opts.petuSeparator });
+        }, null, opts);
       }
     },
 
@@ -197,14 +229,18 @@
             forEach(array[z], function(errr){
               if(errr && breakOnError === true) return callback(errr);
               else {
-                err = errr;
+                if(errr){
+                  err = errr;
+                }
                 forEachAr(z+1);
               }
             },z);
           }
         };
         forEachAr(0);
-      } else return callback(true);
+      } else {
+        return callback(true);
+      }
     },
 
 
@@ -376,11 +412,9 @@
 
   };
 
-  function Petu(opts){
-    if(proto.isString(opts)) opts = { petuSeparator : opts };
-    else if(!proto.isObject(opts)) opts = { petuSeparator : PETU_SEP };
-    else if(!proto.isString(opts.petuSeparator)) opts.petuSeparator = PETU_SEP;
-    var allowed = ['petuSeparator'];
+  function Petu(options){
+    var opts = proto.getOptions(options, null, { 'String' : 'petuSeparator', 'Number' : 'maxDeep' });
+    var allowed = ['petuSeparator', 'maxDeep'];
     proto.copy(this,opts,true,function(val,key){
       return allowed.indexOf(key) !== -1;
     });
