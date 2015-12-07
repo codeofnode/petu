@@ -30,8 +30,8 @@
     fixOptions : function(options,bool){
       var mapping = { 'Number' : 'maxDeep' };
       if(this.isString(bool)) mapping['Boolean'] = bool;
-      var opts = proto.getOptions(options,null,mapping);
-      if(!proto.isNumber(opts.maxDeep)) opts.maxDeep = proto.isNumber(this.maxDeep) ? this.maxDeep : MAX_DEEP;
+      var opts = this.getOptions(options,null,mapping);
+      if(!this.isNumber(opts.maxDeep)) opts.maxDeep = this.isNumber(this.maxDeep) ? this.maxDeep : MAX_DEEP;
       return opts;
     },
 
