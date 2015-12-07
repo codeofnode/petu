@@ -384,4 +384,82 @@ describe('petu', function() {
       });
     });
   })();
+
+  (function(){
+    var now = 'each';
+    var func = test.bind(undefined,now);
+    describe(now, function() {
+      this.timeout(6000);
+      it('no parameter passed',function(){
+        func([],undefined);
+      });
+      it('simple without break',function(done){
+        var count = 0;
+        var arr = [0,1,2,3,4]
+        func([arr, function(item,cb){
+          if(count === item) {
+            count++;
+          }
+          setTimeout(cb,(1000-(item+1)*(((item%2===0)?(-100):100))));
+        }, function(err){
+          assert.equal(err,null);
+          assert.equal(count,5);
+          done();
+        }], undefined);
+      });
+      it('simple with error with breakOnError',function(done){
+        var count = 0;
+        var arr = [0,1,2,3,4];
+        func([arr, function(item,cb){
+          count++;
+          setTimeout(cb.bind(undefined,(item === 2 ? item : null),((item+1)*100)));
+        }, function(err){
+          assert.equal(err,2);
+          assert.equal(count,5);
+          done();
+        }], undefined);
+      });
+    });
+  })();
+
+  (function(){
+    var now = 'parallel';
+    var func = test.bind(undefined,now);
+    describe(now, function() {
+      this.timeout(6000);
+      it('no parameter passed',function(){
+        func([],undefined);
+      });
+      it('simple without break',function(done){
+        var count = 0, arr = [];
+        var arry = [0,1,2,3,4].forEach(function(item){
+          arr.push(function(item,cb){
+            if(count === item) {
+              count++;
+            }
+            setTimeout(cb,(1000-(item+1)*(((item%2===0)?(-100):100))));
+          }.bind(null,item));
+        });
+        func([arr, function(err){
+          assert.equal(err,null);
+          assert.equal(count,5);
+          done();
+        }], undefined);
+      });
+      it('simple with error with breakOnError',function(done){
+        var count = 0, arr = [];
+        var arry = [0,1,2,3,4].forEach(function(item){
+          arr.push(function(item,cb){
+            count++;
+            setTimeout(cb.bind(undefined,(item === 2 ? item : null),((item+1)*100)));
+          }.bind(null,item));
+        });
+        func([arr, function(err){
+          assert.equal(err,2);
+          assert.equal(count,5);
+          done();
+        }], undefined);
+      });
+    });
+  })();
 });

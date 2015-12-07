@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  var PETU_SEP = '.', INT_SEP = '--petu-->', MAX_DEEP = 9;
+  var INT_SEP = '--petu-->', MAX_DEEP = 9;
 
   var proto = {
 
@@ -27,12 +27,11 @@
     },
 
 
-    fixOptions : function(options,sep,bool){
-      var mapping = { 'String' : 'petuSeparator', 'Number' : 'maxDeep' };
+    fixOptions : function(options,bool){
+      var mapping = { 'Number' : 'maxDeep' };
       if(this.isString(bool)) mapping['Boolean'] = bool;
       var opts = proto.getOptions(options,null,mapping);
       if(!proto.isNumber(opts.maxDeep)) opts.maxDeep = proto.isNumber(this.maxDeep) ? this.maxDeep : MAX_DEEP;
-      if(!proto.isString(opts.petuSeparator)) opts.petuSeparator = proto.stringify(this.petuSeparator || sep || PETU_SEP);
       return opts;
     },
 
@@ -93,11 +92,11 @@
 
 
     walkInto : function(obj, fun, filter, options, root, key, path, count){
-      var opts = this.fixOptions(options,null,'onlyOne');
+      var opts = this.fixOptions(options,'onlyOne');
       var pass = false;
       if(!this.isFunction(fun)) return pass;
       if(!this.isNumber(count)) count = 0;
-      if(!this.isString(path)) path = '$';
+      if(!Array.isArray(path)) path = ['$'];
       var isObj = this.isObject(obj,true,true);
       if((!opts.onlyObject || isObj) && (opts.addRoot || root || count)
           && (!this.isFunction(filter) || filter(obj, key, root, path, count))
@@ -109,7 +108,7 @@
         count++;
         var keys = Object.keys(obj);
         for(var ok = false, z=0,len=keys.length;z<len;z++){
-          ok = this.walkInto(obj[keys[z]], fun, filter, opts, obj, keys[z], (path+opts.petuSeparator+keys[z]), count);
+          ok = this.walkInto(obj[keys[z]], fun, filter, opts, obj, keys[z], path.concat(keys[z]), count);
           if(opts.onlyOne && ok) {
             break;
           }
@@ -120,7 +119,7 @@
 
 
     removeProperties : function(obj, fields, options){
-      var opts = this.fixOptions(options, INT_SEP, 'over');
+      var opts = this.fixOptions(options, 'over');
       if(!this.isString(fields)) return;
       var fields = fields.trim().split(' '), isNumber = this.isNumber.bind(this);
       if(!fields.length) return;
@@ -165,30 +164,47 @@
     },
 
 
-    copy : function(obj, source,options,filter){
-      var opts = this.fixOptions(options, INT_SEP, 'over');
+    together : function(obj, source, func, options,filter){
+      var opts;
+      if(!this.isFunction(func)) func = this.noop;
+      if(this.isString(options)) opts = { sep : options };
+      else opts = this.fixOptions(options, 'over');
       if(this.isObject(obj,true,true)){
-        var isObject = this.isObject.bind(this), ptrs = { $ : obj },
-          chopRight = this.chopRight.bind(this), isFunction = this.isFunction.bind(this), isFound = this.isFound.bind(this);
+        var sep=opts.sep||INT_SEP, ptrs = { $ : obj },
+          isFunction = this.isFunction.bind(this), isFound = this.isFound.bind(this);
         this.walkInto(source,function(val,key,root,path){
           if(!isFunction(filter) || filter(val,key,root,path)){
-            var np = null, prev = chopRight(path,opts.petuSeparator);
-            if(isObject(val,true,true)){
-              if(!isFound(ptrs[path])){
-                if(Array.isArray(val)) np = new Array(root.length);
-                else np = {};
-                ptrs[path] = np;
-                ptrs[prev][key] = np;
-              }
-            } else {
-              var pointer = ptrs[prev];
-              if(isFound(pointer) && (opts.over || !pointer.hasOwnProperty(key))){
-                pointer[key] = val;
-              }
+            var np = null, prev = '';
+            for(var z = path.length-2;z>=0;z--){
+              prev = path[z] + (prev.length ? (sep + prev): '');
             }
+            var prvPoint  = ptrs[prev], jPath = prev + sep + path[path.length-1], ifPrvFound = isFound(prvPoint);
+            func(ptrs,jPath,ifPrvFound,prvPoint,val,key,root,path,opts);
           }
         }, null, opts);
       }
+    },
+
+
+    copy : function(obj, source, options,filter){
+      var isObject = this.isObject.bind(this), isFound = this.isFound.bind(this);
+      this.together(obj, source, function(ptrs,jPath,ifPrvFound,prvPoint,val,key,root,path,opts){
+        if(isObject(val,true,true)){
+          if(!isFound(ptrs[jPath])){
+            var np = null;
+            if(Array.isArray(val)) np = new Array(root.length);
+            else np = {};
+            ptrs[jPath] = np;
+            if(ifPrvFound) {
+              prvPoint[key] = np;
+            }
+          }
+        } else {
+          if(ifPrvFound && (opts.over || !prvPoint.hasOwnProperty(key))){
+            prvPoint[key] = val;
+          }
+        }
+      },options,filter);
     },
 
 
@@ -214,28 +230,71 @@
     },
 
 
+    noop : function(){
+    },
+
+
+    each : function(array, forEach, callback){
+      if(!this.isFunction(callback)) callback = this.noop;
+      if(Array.isArray(array) && this.isFunction(forEach)){
+        var eaching = this.eaching.bind(this);
+        var arlen = array.length, results = new Array(arlen);
+        var lastCall = function(z){
+          if(z===arlen) callback(null,results);
+        };
+        for(var z =0;z<arlen;z++){
+          eaching(array[z], forEach, callback, lastCall, results, z, true);
+        }
+      } else {
+        return callback(true);
+      }
+    },
+
+
+    parallel : function(array,callback){
+      this.each(array,function(func,next){ func(next); },callback);
+    },
+
+
+    eaching : function(item, forEach, callback, next, saveResults, z, breakOnError, saveError){
+      if(!this.isFunction(forEach)) forEach = this.noop;
+      if(!this.isFunction(next)) next = this.noop;
+      if(!this.isFunction(callback)) callback = this.noop;
+      var isNumber = this.isNumber.bind(this), isFunction = this.isFunction.bind(this);
+      forEach(item, function(errr){
+        if(errr && breakOnError === true) return callback(errr, saveResults);
+        else {
+          if(errr && saveError){
+            saveError.error = errr;
+          }
+          if(isNumber(z,true)){
+            var res = Array.prototype.slice.call(arguments);
+            res.shift();
+            try {
+              saveResults[z] = (res.length === 1 ? res[0] : res);
+            } catch(er){ }
+            if(isFunction(next)) {
+              next(z+1);
+            }
+          }
+        }
+      },z);
+    },
+
+
     eachSeries : function(array, forEach, breakOnError, callback){
       if(this.isFunction(breakOnError)){
         callback = breakOnError;
         breakOnError = true;
       } else if(this.isFunction(callback)){
         breakOnError = Boolean(breakOnError);
-      } else return;
+      } else callback = this.noop;
       if(Array.isArray(array) && this.isFunction(forEach)){
-        var err = null, arlen = array.length;
+        var eaching = this.eaching.bind(this), saveError = { error : null };
+        var arlen = array.length, results = new Array(arlen);
         var forEachAr = function(z){
-          if(z === arlen) return callback(err);
-          else {
-            forEach(array[z], function(errr){
-              if(errr && breakOnError === true) return callback(errr);
-              else {
-                if(errr){
-                  err = errr;
-                }
-                forEachAr(z+1);
-              }
-            },z);
-          }
+          if(z === arlen) return callback(saveError.error, results);
+          else eaching(array[z], forEach, callback, forEachAr, results, z, breakOnError, saveError);
         };
         forEachAr(0);
       } else {
@@ -413,8 +472,8 @@
   };
 
   function Petu(options){
-    var opts = proto.getOptions(options, null, { 'String' : 'petuSeparator', 'Number' : 'maxDeep' });
-    var allowed = ['petuSeparator', 'maxDeep'];
+    var opts = proto.getOptions(options, null, { 'Number' : 'maxDeep' });
+    var allowed = ['maxDeep'];
     proto.copy(this,opts,true,function(val,key){
       return allowed.indexOf(key) !== -1;
     });
