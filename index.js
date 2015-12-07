@@ -187,7 +187,10 @@
     copy : function(obj, source, options,filter){
       var isObject = this.isObject.bind(this), opts, isFound = this.isFound.bind(this);
       if(options === false) opts = { allowRec : false };
-      else opts = this.fixOptions(options, 'over');
+      else {
+        if(this.isFunction(options)) { filter = options; options = null; }
+        opts = this.fixOptions(options, 'over');
+      }
       if(!isObject(obj,true,true)) return;
       if(!isObject(source,true,true)) return;
       if(opts.allowRec !== false){
@@ -487,7 +490,7 @@
   function Petu(options){
     var opts = proto.getOptions(options, null, { 'Number' : 'maxDeep' });
     var allowed = ['maxDeep'];
-    proto.copy(this,opts,{ over : true, allowRec : true },function(val,key){
+    proto.copy(this,opts,true,function(val,key){
       return allowed.indexOf(key) !== -1;
     });
   }
