@@ -238,6 +238,11 @@ describe('petu', function() {
         func([db,abc],undefined);
         assert.deepEqual(db,abc);
       });
+      it('array',function(){
+        var db = new Array(2), abc = [{a : 'b', c : [{ d : 'e', g : 'b' }], f: { g: 'h' } },'b'];
+        func([db,abc],undefined);
+        assert.deepEqual(db,abc);
+      });
       it('circular object',function(){
         var b = {a : 'd', n : 56};
         b.c = b;

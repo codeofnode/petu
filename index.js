@@ -102,7 +102,7 @@
           && (!this.isFunction(filter) || filter(obj, key, root, path, count))
           && (!this.isObject(filter,true,true) || this.isPassingFilter(obj, filter))){
         pass = true;
-        fun(obj, key, root, path, count);
+        if(fun(obj, key, root, path, count) === 'BREAK') return pass;;
       }
       if(isObj && count < opts.maxDeep){
         count++;
@@ -173,15 +173,13 @@
         var sep=opts.sep||INT_SEP, ptrs = { $ : obj },
           isFunction = this.isFunction.bind(this), isFound = this.isFound.bind(this);
         this.walkInto(source,function(val,key,root,path){
-          if(!isFunction(filter) || filter(val,key,root,path)){
-            var np = null, prev = '';
-            for(var z = path.length-2;z>=0;z--){
-              prev = path[z] + (prev.length ? (sep + prev): '');
-            }
-            var prvPoint  = ptrs[prev], jPath = prev + sep + path[path.length-1], ifPrvFound = isFound(prvPoint);
-            func(ptrs,jPath,ifPrvFound,prvPoint,val,key,root,path,opts);
+          var np = null, prev = '';
+          for(var z = path.length-2;z>=0;z--){
+            prev = path[z] + (prev.length ? (sep + prev): '');
           }
-        }, null, opts);
+          var prvPoint  = ptrs[prev], jPath = prev + sep + path[path.length-1], ifPrvFound = isFound(prvPoint);
+          func(ptrs,jPath,ifPrvFound,prvPoint,val,key,root,path,opts);
+        }, filter, opts);
       }
     },
 
