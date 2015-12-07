@@ -186,23 +186,37 @@
 
     copy : function(obj, source, options,filter){
       var isObject = this.isObject.bind(this), isFound = this.isFound.bind(this);
-      this.together(obj, source, function(ptrs,jPath,ifPrvFound,prvPoint,val,key,root,path,opts){
-        if(isObject(val,true,true)){
-          if(!isFound(ptrs[jPath])){
-            var np = null;
-            if(Array.isArray(val)) np = new Array(root.length);
-            else np = {};
-            ptrs[jPath] = np;
-            if(ifPrvFound) {
-              prvPoint[key] = np;
+      var opts = this.fixOptions(options, 'over');
+      if(!isObject(obj,true,true)) return;
+      if(!isObject(source,true,true)) return;
+      if(opts.maxDeep === 1){
+        var pk = Object.keys(source);
+        for(var z=0,len=pk.length;z<len;z++){
+          if(!this.isFunction(filter) || filter(source[pk[z]], pk[z], source, ['$'], 1)){
+            if(opts.over || !obj.hasOwnProperty(pk[z])){
+              obj[pk[z]] = source[pk[z]];
             }
           }
-        } else {
-          if(ifPrvFound && (opts.over || !prvPoint.hasOwnProperty(key))){
-            prvPoint[key] = val;
-          }
         }
-      },options,filter);
+      } else {
+        this.together(obj, source, function(ptrs,jPath,ifPrvFound,prvPoint,val,key,root,path,opts){
+          if(isObject(val,true,true)){
+            if(!isFound(ptrs[jPath])){
+              var np = null;
+              if(Array.isArray(val)) np = new Array(root.length);
+              else np = {};
+              ptrs[jPath] = np;
+              if(ifPrvFound) {
+                prvPoint[key] = np;
+              }
+            }
+          } else {
+            if(ifPrvFound && (opts.over || !prvPoint.hasOwnProperty(key))){
+              prvPoint[key] = val;
+            }
+          }
+        },opts,filter);
+      }
     },
 
 

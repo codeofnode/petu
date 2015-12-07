@@ -238,6 +238,17 @@ describe('petu', function() {
         func([db,abc],undefined);
         assert.deepEqual(db,abc);
       });
+      it('copy oneLevel',function(){
+        var rec = {l : 'p'};
+        rec.re = rec;
+        var db = {}, abc = {a : 'b', c : [{ d : 'e', rec : rec, g : 'b' }], f: { g: 'h' } };
+        func([db,abc,1],undefined);
+        assert.equal(db.a,abc.a);
+        assert.equal(db.f.g,abc.f.g);
+        assert.equal(db.c.length,abc.c.length);
+        assert.equal(db.c[0].g,abc.c[0].g);
+        assert.equal(db.c[0].rec.re,abc.c[0].rec.re.re);
+      });
       it('array',function(){
         var db = new Array(2), abc = [{a : 'b', c : [{ d : 'e', g : 'b' }], f: { g: 'h' } },'b'];
         func([db,abc],undefined);
