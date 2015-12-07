@@ -235,30 +235,37 @@ describe('petu', function() {
       });
       it('copy',function(){
         var db = {}, abc = {a : 'b', c : [{ d : 'e', g : 'b' }], f: { g: 'h' } };
-        func([db,abc],undefined);
+        func([db,abc,false],undefined);
         assert.deepEqual(db,abc);
       });
-      it('copy oneLevel',function(){
+      it('copy recursive',function(){
         var rec = {l : 'p'};
         rec.re = rec;
         var db = {}, abc = {a : 'b', c : [{ d : 'e', rec : rec, g : 'b' }], f: { g: 'h' } };
-        func([db,abc,1],undefined);
+        func([db,abc],undefined);
         assert.equal(db.a,abc.a);
         assert.equal(db.f.g,abc.f.g);
         assert.equal(db.c.length,abc.c.length);
         assert.equal(db.c[0].g,abc.c[0].g);
         assert.equal(db.c[0].rec.re,abc.c[0].rec.re.re);
       });
+      it('copy oneLevel with options object',function(){
+        var rec = {l : 'p'};
+        rec.re = rec;
+        var db = {}, abc = {a : 'b', c : [{ d : 'e', rec : rec, g : 'b' }], f: { g: 'h' } };
+        func([db,abc,{ allowRec : false, maxDeep : 1 }],undefined);
+        assert.deepEqual(db,{ a: 'b', c : [undefined], f : {} });
+      });
       it('array',function(){
         var db = new Array(2), abc = [{a : 'b', c : [{ d : 'e', g : 'b' }], f: { g: 'h' } },'b'];
-        func([db,abc],undefined);
+        func([db,abc,false],undefined);
         assert.deepEqual(db,abc);
       });
       it('circular object',function(){
         var b = {a : 'd', n : 56};
         b.c = b;
         var z = {};
-        func([z,b],undefined);
+        func([z,b,false],undefined);
       });
     });
   })();

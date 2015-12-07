@@ -185,11 +185,12 @@
 
 
     copy : function(obj, source, options,filter){
-      var isObject = this.isObject.bind(this), isFound = this.isFound.bind(this);
-      var opts = this.fixOptions(options, 'over');
+      var isObject = this.isObject.bind(this), opts, isFound = this.isFound.bind(this);
+      if(options === false) opts = { allowRec : false };
+      else opts = this.fixOptions(options, 'over');
       if(!isObject(obj,true,true)) return;
       if(!isObject(source,true,true)) return;
-      if(opts.maxDeep === 1){
+      if(opts.allowRec !== false){
         var pk = Object.keys(source);
         for(var z=0,len=pk.length;z<len;z++){
           if(!this.isFunction(filter) || filter(source[pk[z]], pk[z], source, ['$'], 1)){
@@ -486,7 +487,7 @@
   function Petu(options){
     var opts = proto.getOptions(options, null, { 'Number' : 'maxDeep' });
     var allowed = ['maxDeep'];
-    proto.copy(this,opts,true,function(val,key){
+    proto.copy(this,opts,{ over : true, allowRec : true },function(val,key){
       return allowed.indexOf(key) !== -1;
     });
   }
