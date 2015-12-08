@@ -102,7 +102,7 @@
           && (!this.isFunction(filter) || filter(obj, key, root, path, count))
           && (!this.isObject(filter,true,true) || this.isPassingFilter(obj, filter))){
         pass = true;
-        if(fun(obj, key, root, path, count) === 'BREAK') return pass;;
+        if(fun(obj, key, root, path, count) === 'BREAK') return pass;
       }
       if(isObj && count < opts.maxDeep){
         count++;
@@ -118,8 +118,10 @@
     },
 
 
-    removeProperties : function(obj, fields, options){
-      var opts = this.fixOptions(options, 'over');
+    removeProperties : function(obj, fields, options, filter){
+      if(this.isFunction(options)) { filter = options; options = null; }
+      var opts = this.fixOptions(options);
+      opts.onlyObject = true;
       if(!this.isString(fields)) return;
       var fields = fields.trim().split(' '), isNumber = this.isNumber.bind(this);
       if(!fields.length) return;
@@ -137,7 +139,7 @@
             }
           }
         }
-      }, null,opts);
+      }, filter,opts);
     },
 
 
@@ -215,7 +217,7 @@
               }
             }
           } else {
-            if(ifPrvFound && (opts.over || !prvPoint.hasOwnProperty(key))){
+            if(ifPrvFound && (opts.over || !isFound(prvPoint[key]))){
               prvPoint[key] = val;
             }
           }
@@ -254,9 +256,10 @@
       if(!this.isFunction(callback)) callback = this.noop;
       if(Array.isArray(array) && this.isFunction(forEach)){
         var eaching = this.eaching.bind(this);
-        var arlen = array.length, results = new Array(arlen);
+        var arlen = array.length, results = new Array(arlen), called = 0;
         var lastCall = function(z){
-          if(z===arlen) callback(null,results);
+          called++;
+          if(called===arlen) callback(null,results);
         };
         for(var z =0;z<arlen;z++){
           eaching(array[z], forEach, callback, lastCall, results, z, true);
@@ -368,10 +371,12 @@
 
     errorInObject : function(obj, file){
       if(!this.isObject(obj,true,true)) return 'Object to validate not found';
-      if(!this.isObject(file,true)) return 'Filing for object not found';
+      if(this.isString(file)) {
+        var tp = file; file = {}; file[tp] = 's';
+      } else if(!this.isObject(file,true)) return 'Filing for object not found';
       for(var k in file){
         if(file[k]){
-          if(typeof file[k] === 'string') file[k] = { type : file[k] };
+          if(this.isString(file[k])) file[k] = { type : file[k] };
           if(!obj.hasOwnProperty(k)) {
             if(file[k].notReq === true) return false;
             else return k + ' not found..!';

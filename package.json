@@ -1,7 +1,7 @@
 {
   "name": "petu",
   "description": "Collection of pure javascript utilities to cut your lines of code",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "keywords": [
     "purejs",
     "helping",
