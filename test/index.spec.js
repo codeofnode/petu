@@ -235,14 +235,14 @@ describe('petu', function() {
       });
       it('copy',function(){
         var db = {}, abc = {a : 'b', c : [{ d : 'e', g : 'b' }], f: { g: 'h' } };
-        func([db,abc,false],undefined);
+        func([db,abc],undefined);
         assert.deepEqual(db,abc);
       });
       it('copy recursive',function(){
         var rec = {l : 'p'};
         rec.re = rec;
         var db = {}, abc = {a : 'b', c : [{ d : 'e', rec : rec, g : 'b' }], f: { g: 'h' } };
-        func([db,abc],undefined);
+        func([db,abc,{ singleLevel : true}],undefined);
         assert.equal(db.a,abc.a);
         assert.equal(db.f.g,abc.f.g);
         assert.equal(db.c.length,abc.c.length);
@@ -253,19 +253,69 @@ describe('petu', function() {
         var rec = {l : 'p'};
         rec.re = rec;
         var db = {}, abc = {a : 'b', c : [{ d : 'e', rec : rec, g : 'b' }], f: { g: 'h' } };
-        func([db,abc,{ allowRec : false, maxDeep : 1 }],undefined);
-        assert.deepEqual(db,{ a: 'b', c : [undefined], f : {} });
+        func([db,abc,{ maxDeep : 1 }],undefined);
+        assert.deepEqual(db,{ a: 'b', c : new Array(1), f : {} });
       });
       it('array',function(){
         var db = new Array(2), abc = [{a : 'b', c : [{ d : 'e', g : 'b' }], f: { g: 'h' } },'b'];
-        func([db,abc,false],undefined);
+        func([db,abc],undefined);
         assert.deepEqual(db,abc);
       });
       it('circular object',function(){
         var b = {a : 'd', n : 56};
         b.c = b;
         var z = {};
-        func([z,b,false],undefined);
+        func([z,b],undefined);
+      });
+    });
+  })();
+
+  (function(){
+    var now = 'compare'; var func = test.bind(undefined,now);
+    describe(now, function() {
+      it('no parameter passed',function(){
+        func([],true);
+      });
+      it('copy',function(){
+        var db = {a : 'b', c : [{ d : 'e', g : 'b' }], f: { g: 'h' } }, abc = {a : 'b', c : [{ d : 'e', g : 'b' }], f: { g: 'h' } };
+        func([db,abc],true);
+        func([db,abc,true],false);
+      });
+      it('copy recursive',function(){
+        var rec = {l : 'p'};
+        rec.re = rec;
+        var db = {a : 'b', c : [{ d : 'e', rec : rec, g : 'b' }], f: { g: 'h' } }, abc = {a : 'b', c : [{ d : 'e', rec : rec, g : 'b' }], f: { g: 'h' } };
+        func([db,abc],true);
+        func([db,abc,true],false);
+        delete db.c[0].d;
+        func([db,abc],false);
+        func([db,abc,true],false);
+        delete abc.c[0].d;
+        func([db,abc],true);
+        func([db,abc,true],false);
+      });
+      it('copy oneLevel with options object',function(){
+        var rec = {l : 'p'};
+        rec.re = rec;
+        var db = {a : 'b', c : [{ d : 'e', rec : rec, g : 'b' }], f: { g: 'h' } }, abc = {a : 'b', c : [{ d : 'e', rec : rec, g : 'b' }], f: { g: 'h' } };
+        func([db,abc,{ maxDeep : 1 }],true);
+        func([db,abc,{ maxDeep : 1, singleLevel : true }],false);
+      });
+      it('array',function(){
+        var db = new Array(2), abc = [{a : 'b', c : [{ d : 'e', g : 'b' }], f: { g: 'h' } },'b'];
+        func([db,abc],false);
+      });
+      it('circular object',function(){
+        var b = {a : 'd', n : 56};
+        b.c = b;
+        var z = {};
+        func([z,b],false);
+        func([z,b,true],false);
+      });
+      it('null',function(){
+        var b = {a : 'd', n : 56};
+        func([b,null],false);
+        func([b,null,true],false);
       });
     });
   })();

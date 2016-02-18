@@ -3,6 +3,46 @@
 
   var INT_SEP = '--petu-->', MAX_DEEP = 9;
 
+  var fixOptions = function(options,bool,str){
+    var mapping = { 'Number' : 'maxDeep' };
+    if(proto.isString(bool)) mapping['Boolean'] = bool;
+    if(proto.isString(str)) mapping['String'] = str;
+    var opts = proto.getOptions(options,null,mapping);
+    if(!proto.isNumber(opts.maxDeep)) opts.maxDeep = proto.isNumber(proto.maxDeep) ? proto.maxDeep : MAX_DEEP;
+    return opts;
+
+  }, copyAndCompare = function(obj, source, options,filter, thirdBoolean, iterate, fixIfNotObject){
+    var isObject = proto.isObject.bind(proto), opts, isFound = proto.isFound.bind(proto);
+    if(proto.isFunction(options)) { filter = options; options = null; }
+    opts = fixOptions(options, thirdBoolean);
+    if(!isObject(obj,true,true)) return;
+    if(!isObject(source,true,true)) return;
+    if(opts.singleLevel === true){
+      var pk = Object.keys(source);
+      for(var z=0,len=pk.length;z<len;z++){
+        if(!proto.isFunction(filter) || filter(source[pk[z]], pk[z], source, ['$'], 1)){
+          if(iterate(source[pk[z]], obj[pk[z]], pk[z], source, obj, ['$', pk[z]], opts) === 'BREAK'){
+            break;
+          }
+        }
+      }
+    } else {
+      proto.together(obj, source, function(valSource,valObj,key,rootSource,rootObj,path){
+        var toCall = iterate;
+        if(petu.isFunction(fixIfNotObject) && (isObject(valSource,true,true) || isObject(valObj,true,true))){
+          toCall = fixIfNotObject;
+        }
+        if(toCall(valSource, valObj, key, rootSource, rootObj, path, opts) === 'BREAK'){
+          return 'BREAK';
+        }
+      },opts,filter);
+    }
+  };
+
+
+
+
+
   var proto = {
 
     isNumber:function(input, plusZero, allowDec){
@@ -27,12 +67,43 @@
     },
 
 
-    fixOptions : function(options,bool){
-      var mapping = { 'Number' : 'maxDeep' };
-      if(this.isString(bool)) mapping['Boolean'] = bool;
-      var opts = this.getOptions(options,null,mapping);
-      if(!this.isNumber(opts.maxDeep)) opts.maxDeep = this.isNumber(this.maxDeep) ? this.maxDeep : MAX_DEEP;
-      return opts;
+    getEndValue : function(root){
+      function loop(inp,key){
+        if(typeof inp !== 'undefined'){
+          return inp[key];
+        } else return undefined;
+      }
+      var len = arguments.length, now = root;
+      for(var z =1;z<len;z++){
+        now = loop(root,arguments[z]);
+        if(now === undefined){
+          break;
+        } else {
+          root = now;
+        }
+      }
+      return now;
+    },
+
+
+    findValueAtPath : function(root, path, opts){
+      var paths = [];
+      if(!this.isObject(root,true,true)) return undefined;
+      if(!this.isString(path)){
+        if(Array.isArray(path)){
+          paths = path;
+        } else {
+          return undefined;
+        }
+      }
+      opts = fixOptions(opts,null,'sep');
+      if(!this.isString(opts.sep)) opts.sep = INT_SEP;
+      if(!this.isString(opts.rootString)) opts.rootString = '$';
+      if(!paths.length) {
+        paths = path.split(opts.sep);
+      }
+      if(paths[0] === opts.rootString) paths = paths.slice(1);
+      return this.getEndValue.apply(this, [root].concat(paths));
     },
 
 
@@ -63,8 +134,21 @@
 
 
     isObject : function(obj, allowEmpty, allowArray, allowNull){
-      return Boolean((typeof obj === 'object') && (allowNull || obj) &&
-        (allowArray || !Array.isArray(obj)) && (allowEmpty || Object.keys(obj).length));
+      if(allowEmpty instanceof Object){
+        allowArray = Boolean(allowEmpty.allowArray);
+        allowNull = Boolean(allowEmpty.allowNull);
+        allowEmpty = Boolean(allowEmpty.allowEmpty);
+      }
+      var pass = Boolean((typeof obj === 'object') && (allowNull || obj) && (allowArray || !Array.isArray(obj)));
+      if(pass && !allowEmpty){
+        try {
+          return Boolean(Object.keys(obj).length);
+        } catch(er){
+          return false;
+        }
+      } else {
+        return pass;
+      }
     },
 
 
@@ -81,18 +165,26 @@
     stringify : function(input,pretty,defMsg){
       if(this.isString(input,true)){
         return input;
-      } else if(this.isObject(input,true,true)){
+      } else if(this.isObject(input,true,true,true)){
         try {
           return pretty ? JSON.stringify(input, undefined, 2) : JSON.stringify(input);
         } catch(e) {
           return this.isString(defMsg) ? defMsg : 'CIRCULAR_JSON_FOUND';
         }
-      } else return String(input);
+      } else {
+        if(input && this.isFunction(input.toString)){
+          var result = input.toString();
+          if(this.isString(result)){
+            return result;
+          }
+        }
+        return String(input);
+      }
     },
 
 
     walkInto : function(obj, fun, filter, options, root, key, path, count){
-      var opts = this.fixOptions(options,'onlyOne');
+      var opts = fixOptions(options,'onlyOne');
       var pass = false;
       if(!this.isFunction(fun)) return pass;
       if(!this.isNumber(count)) count = 0;
@@ -102,7 +194,9 @@
           && (!this.isFunction(filter) || filter(obj, key, root, path, count))
           && (!this.isObject(filter,true,true) || this.isPassingFilter(obj, filter))){
         pass = true;
-        if(fun(obj, key, root, path, count) === 'BREAK') return pass;
+        if(fun(obj, key, root, path, count) === 'BREAK'){
+          return pass;
+        }
       }
       if(isObj && count < opts.maxDeep){
         count++;
@@ -120,7 +214,7 @@
 
     removeProperties : function(obj, fields, options, filter){
       if(this.isFunction(options)) { filter = options; options = null; }
-      var opts = this.fixOptions(options);
+      var opts = fixOptions(options);
       opts.onlyObject = true;
       if(!this.isString(fields)) return;
       var fields = fields.trim().split(' '), isNumber = this.isNumber.bind(this);
@@ -170,17 +264,11 @@
       var opts;
       if(!this.isFunction(func)) func = this.noop;
       if(this.isString(options)) opts = { sep : options };
-      else opts = this.fixOptions(options, 'over');
+      else opts = fixOptions(options, 'overwrite');
       if(this.isObject(obj,true,true)){
-        var sep=opts.sep||INT_SEP, ptrs = { $ : obj },
-          isFunction = this.isFunction.bind(this), isFound = this.isFound.bind(this);
-        this.walkInto(source,function(val,key,root,path){
-          var np = null, prev = '';
-          for(var z = path.length-2;z>=0;z--){
-            prev = path[z] + (prev.length ? (sep + prev): '');
-          }
-          var prvPoint  = ptrs[prev], jPath = prev + sep + path[path.length-1], ifPrvFound = isFound(prvPoint);
-          func(ptrs,jPath,ifPrvFound,prvPoint,val,key,root,path,opts);
+        var findValueAtPath = this.findValueAtPath.bind(this);
+        this.walkInto(source,function(valSource,key,rootSource,path){
+          return func(valSource,findValueAtPath(obj,path),key,rootSource,findValueAtPath(obj,path.slice(0,-1)),path);
         }, filter, opts);
       }
     },
@@ -188,40 +276,46 @@
 
     copy : function(obj, source, options,filter){
       var isObject = this.isObject.bind(this), opts, isFound = this.isFound.bind(this);
-      if(options === false) opts = { allowRec : false };
-      else {
-        if(this.isFunction(options)) { filter = options; options = null; }
-        opts = this.fixOptions(options, 'over');
-      }
-      if(!isObject(obj,true,true)) return;
-      if(!isObject(source,true,true)) return;
-      if(opts.allowRec !== false){
-        var pk = Object.keys(source);
-        for(var z=0,len=pk.length;z<len;z++){
-          if(!this.isFunction(filter) || filter(source[pk[z]], pk[z], source, ['$'], 1)){
-            if(opts.over || !obj.hasOwnProperty(pk[z])){
-              obj[pk[z]] = source[pk[z]];
-            }
-          }
+      copyAndCompare(obj, source, options, filter, 'overwrite', function(valSource, valObj, key, rootSource, rootObj, path, opts){
+        if(opts.overwrite || !(rootObj.hasOwnProperty(key))){
+          rootObj[key] = valSource;
         }
+      }, function(valSource, valObj, key, rootSource, rootObj, path, opts){
+        if(isObject(valSource,true,true)){
+          var np = null;
+          if(Array.isArray(valSource)) np = new Array(valSource.length);
+          else np = {};
+          rootObj[key] = np;
+        }
+      });
+    },
+
+
+    compare : function(obj, source, options,filter){
+      var isObject = this.isObject.bind(this), opts, isFound = this.isFound.bind(this), passed = true;
+      if(Boolean(Boolean(obj) ^ Boolean(source))){
+        return false;
+      }
+      copyAndCompare(obj, source, options, filter, 'singleLevel', function(valSource, valObj, key, rootSource, rootObj, path, opts){
+        if(valSource !== valObj) {
+          passed = false;
+          return 'BREAK';
+        }
+      }, function(valSource, valObj, key, rootSource, rootObj, path, opts){
+        if(Boolean(isObject(valSource,true,true) ^ isObject(valObj,true,true))){
+          passed = false;
+          return 'BREAK';
+        }
+      });
+      return passed;
+    },
+
+
+    isEqual : function(val, val2){
+      if(this.isObject(val) || this.isObject(val2)){
+      	return val === val2;
       } else {
-        this.together(obj, source, function(ptrs,jPath,ifPrvFound,prvPoint,val,key,root,path,opts){
-          if(isObject(val,true,true)){
-            if(!isFound(ptrs[jPath])){
-              var np = null;
-              if(Array.isArray(val)) np = new Array(root.length);
-              else np = {};
-              ptrs[jPath] = np;
-              if(ifPrvFound) {
-                prvPoint[key] = np;
-              }
-            }
-          } else {
-            if(ifPrvFound && (opts.over || !isFound(prvPoint[key]))){
-              prvPoint[key] = val;
-            }
-          }
-        },opts,filter);
+        return this.stringify(val) === this.stringify(val2);
       }
     },
 
@@ -515,7 +609,7 @@
 
   // Register as an anonymous AMD module
   if (typeof define === 'function' && define.amd) {
-    define([], function () {
+    define('petu', [], function () {
       return petu;
     });
   }
