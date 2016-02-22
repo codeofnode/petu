@@ -15,8 +15,7 @@
     var isObject = proto.isObject.bind(proto), opts, isFound = proto.isFound.bind(proto);
     if(proto.isFunction(options)) { filter = options; options = null; }
     opts = fixOptions(options, thirdBoolean);
-    if(!isObject(obj,true,true)) return;
-    if(!isObject(source,true,true)) return;
+    if(!isObject(obj,true,true) || !isObject(source,true,true)) return true;
     if(opts.singleLevel === true){
       var pk = Object.keys(source);
       for(var z=0,len=pk.length;z<len;z++){
@@ -296,7 +295,7 @@
       if(Boolean(Boolean(obj) ^ Boolean(source))){
         return false;
       }
-      copyAndCompare(obj, source, options, filter, 'singleLevel', function(valSource, valObj, key, rootSource, rootObj, path, opts){
+      var cnc = copyAndCompare(obj, source, options, filter, 'singleLevel', function(valSource, valObj, key, rootSource, rootObj, path, opts){
         if(valSource !== valObj) {
           passed = false;
           return 'BREAK';
@@ -307,7 +306,8 @@
           return 'BREAK';
         }
       });
-      return passed;
+      if(cnc === true) return obj === source;
+      else return passed;
     },
 
 

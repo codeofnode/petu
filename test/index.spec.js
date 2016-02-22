@@ -276,6 +276,24 @@ describe('petu', function() {
       it('no parameter passed',function(){
         func([],true);
       });
+      it('string number passed',function(){
+        func(['1', 1],false);
+      });
+      it('string boolean passed',function(){
+        func(['1', true],false);
+      });
+      it('boolean boolean passed',function(){
+        func([true, true],true);
+      });
+      it('string string passed',function(){
+        func(['true', 'true'],true);
+      });
+      it('string string failed',function(){
+        func(['true', 'atrue'],false);
+      });
+      it('boolean string passed',function(){
+        func([true, 'true'],false);
+      });
       it('copy',function(){
         var db = {a : 'b', c : [{ d : 'e', g : 'b' }], f: { g: 'h' } }, abc = {a : 'b', c : [{ d : 'e', g : 'b' }], f: { g: 'h' } };
         func([db,abc],true);
