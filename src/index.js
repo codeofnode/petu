@@ -10,7 +10,7 @@ const files = fs.readdirSync(join(__dirname)).filter(file => (!file.startsWith('
 const toExport = {};
 
 files.forEach((file) => {
-  toExport[file] =
+  toExport[file.slice(0, -3)] =
     require(join(__dirname, file)); // eslint-disable-line import/no-dynamic-require,global-require
 });
 
