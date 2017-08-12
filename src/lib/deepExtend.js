@@ -1,55 +1,50 @@
 
+import isNoPOJO from './isNoPOJO';
+import cloneNoPOJO from './cloneNoPOJO';
+
+let DEL_KEY = '$del';
+let OVER_KEY = '$overwrite';
+
 /**
- * @module extend
+ * @module deepExtend
  */
 
-class Extend {
-  /**
-   * if a special value
-   * @param {val} val - the input value
-   * @return {boolean} bool - whether a special value
-   */
-  static isSpecificValue(val) {
-    return (val instanceof Buffer || val instanceof Date || val instanceof RegExp);
-  }
+class DeepExtend {
 
   /**
    * the delete key  - if found, that value must be removed from root. whether its array or object
    * @example
    * // returns [0,2];
-   * petu.extend([0,1,2],[0,'$del',2]);
+   * petu.deepExtend([0,1,2],[0,'$del',2]);
    */
-  static get DelKey(){
-    return '$del';
+  static get DelKey() {
+    return DEL_KEY;
   }
 
   /**
    * the overwrite key - if found at index 0 for array, the rest of array valued will be overwrriten
    * @example
    * // returns [3,4];
-   * petu.extend([0,1,2],['$overwrite',3,4]);
+   * petu.deepExtend([0,1,2],['$overwrite',3,4]);
    */
-  static get OverKey(){
-    return '$overwrite';
+  static get OverKey() {
+    return OVER_KEY;
   }
 
-  /**
-   * clone value from specific value
-   * @param {val} val - the input value
-   * @return {boolean} bool - whether a special value
+  /*
+   * Set the del key
+   * @param {string} vl - the new del key
    */
-  static cloneSpecificValue(val) {
-    if (val instanceof Buffer) {
-      const xy = new Buffer(val.length);
-      val.copy(xy);
-      return xy;
-    } else if (val instanceof Date) {
-      return new Date(val.getTime());
-    } else if (val instanceof RegExp) {
-      return new RegExp(val);
-    } else {
-      throw new Error('Unexpected situation');
-    }
+  static set DelKey(vl) {
+    DEL_KEY = vl;
+  }
+
+  /*
+   * Set the over key
+   * @param {string} vl - the new del key
+   */
+  static set OverKey(vl) {
+    OVER_KEY = vl;
   }
 
   /**
@@ -65,20 +60,20 @@ class Extend {
     if (ln < defln) {
       ln = defln;
     }
-    for(let on = 0, item, z = 0; z < ln; z++, on++) {
+    for (let on = 0, item, z = 0; z < ln; z += 1, on += 1) {
       item = arr[z];
       if ((item === null || item === undefined) && Array.isArray(def)) {
-        clone[on] = (typeof def[z] !== 'object' || def[z] === null) ? def[z] : Extend.deepExtend({}, def[z]);
-      } else if (item === DEL_KEY) {
-        clone.splice(on,1);
-        on--;
+        clone[on] = (typeof def[z] !== 'object' || def[z] === null) ? def[z] : DeepExtend.deepExtend({}, def[z]);
+      } else if (item === DeepExtend.DelKey) {
+        clone.splice(on, 1);
+        on -= 1;
       } else if (typeof item === 'object') {
         if (Array.isArray(item)) {
-          clone[on] = Extend.deepCloneArray(item, (def[z] && def[z]));
-        } else if (Extend.isSpecificValue(item)) {
-          clone[on] = Extend.cloneSpecificValue(item);
+          clone[on] = DeepExtend.deepCloneArray(item, (def[z] && def[z]));
+        } else if (isNoPOJO(item)) {
+          clone[on] = cloneNoPOJO(item);
         } else {
-          clone[on] = Extend.deepExtend(((Array.isArray(def) && typeof def[z] === 'object') ? def[z] : {}), item);
+          clone[on] = DeepExtend.deepExtend(((Array.isArray(def) && typeof def[z] === 'object') ? def[z] : {}), item);
         }
       } else {
         clone[on] = item;
@@ -99,7 +94,7 @@ class Extend {
    * @param {...object} n number of arguments
    * @return {object} ret - the extended and new target
    */
-  static deepExtend(...args){
+  static deepExtend(...args) {
     if (args.length < 1 || typeof args[0] !== 'object') {
       return false;
     }
@@ -107,10 +102,9 @@ class Extend {
       return args[0];
     }
 
-    let target = args[0];
+    const target = args[0];
     let val;
     let src;
-    let clone;
 
     args.forEach((obj) => {
       // skip argument if isn't an object, is null, or is an array
@@ -124,15 +118,13 @@ class Extend {
 
         // recursion prevention
         if (val === target || val === null) {
-          return;
 
         /**
          * if new value isn't object then just overwrite by new value
          * instead of extending.
          */
-        } else if (val === Extend.DelKey) {
+        } else if (val === DeepExtend.DelKey) {
           delete target[key];
-          return;
 
         /**
          * if new value isn't object then just overwrite by new value
@@ -140,31 +132,26 @@ class Extend {
          */
         } else if (typeof val !== 'object') {
           target[key] = val;
-          return;
 
         // just clone arrays (and recursive clone objects inside)
         } else if (Array.isArray(val)) {
-          if (val[0] === Extend.OverKey) {
+          if (val[0] === DeepExtend.OverKey) {
             target[key] = val.slice(1);
           } else {
-            target[key] = Extend.deepCloneArray(val, target[key]);
+            target[key] = DeepExtend.deepCloneArray(val, target[key]);
           }
-          return;
 
         // custom cloning and overwrite for specific objects
-        } else if (Extend.isSpecificValue(val)) {
-          target[key] = Extend.cloneSpecificValue(val);
-          return;
+        } else if (isNoPOJO(val)) {
+          target[key] = cloneNoPOJO(val);
 
         // overwrite by new value if source isn't object or array
         } else if (typeof src !== 'object' || src === null || Array.isArray(src)) {
-          target[key] = Extend.deepExtend({}, val);
-          return;
+          target[key] = DeepExtend.deepExtend({}, val);
 
         // source value and new value is objects both, extending...
         } else {
-          target[key] = Extend.deepExtend(src, val);
-          return;
+          target[key] = DeepExtend.deepExtend(src, val);
         }
       });
     });
@@ -172,4 +159,5 @@ class Extend {
   }
 }
 
-export default Extend.deepExtend;
+export default DeepExtend.deepExtend;
+export { DeepExtend };

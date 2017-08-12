@@ -5,7 +5,7 @@
   "scripts": {
     "build": "rm -rf dist && mkdir dist && ./node_modules/.bin/json -f package.json -e \"delete this.devDependencies;delete this.scripts;delete this.nyc;delete this.babel\" > dist/package.json && ./node_modules/.bin/babel src -d dist && cp README.md dist/",
     "prodtest": "TEST_DIR=dist npm run test",
-    "test": "cp package.json src/ && ./node_modules/.bin/cross-env NODE_ENV=test ./node_modules/.bin/nyc ./node_modules/.bin/mocha -b",
+    "test": "cp package.json src/ && ./node_modules/.bin/cross-env NODE_ENV=test ./node_modules/.bin/nyc ./node_modules/.bin/mocha -b test/**",
     "all": "npm run lint && npm test && npm run build && npm run prodtest && npm run docs",
     "docs": "./node_modules/.bin/jsdoc -c .jsdoc.json",
     "lint": "./node_modules/.bin/eslint src"

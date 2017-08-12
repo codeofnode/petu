@@ -1,10 +1,10 @@
 import assert from 'assert'
-const main = require(`../${process.env.TEST_DIR||'src'}`)
+const main = require(`../${process.env.TEST_DIR||'src'}`).default
 
-describe('commulative require', () => {
-  describe('length', () => {
-    it('should be 1', () => {
-      assert(Object.keys(main).length,1);
+describe('commulative require', function() {
+  describe('length', function() {
+    it('should be 3', function() {
+      assert(Object.keys(main).length,3);
     });
   });
 })

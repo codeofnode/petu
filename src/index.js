@@ -10,7 +10,7 @@ const files = fs.readdirSync(join(__dirname, 'lib')).filter(file => (!file.start
 const toExport = {};
 
 files.forEach((file) => {
-  toExport[file] = require(join(__dirname, 'lib', file));
+  toExport[file] = require(join(__dirname, 'lib', file)); // eslint-disable-line import/no-dynamic-require,global-require
 });
 
 export default toExport;
