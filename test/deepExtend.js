@@ -1,5 +1,5 @@
 import assert from 'assert'
-const main = require(`../../${process.env.TEST_DIR||'src'}/lib/deepExtend`).default
+const main = require(`../${process.env.TEST_DIR||'src'}/deepExtend`).default
 
 describe('Deep Extend', function() {
   describe('not arguments', function() {
