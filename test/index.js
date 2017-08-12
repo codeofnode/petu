@@ -1,5 +1,5 @@
 import assert from 'assert'
-const main = require(`../${process.env.TEST_DIR||'src'}`).default
+const main = require(`../${process.env.TEST_DIR||'src'}`)
 
 describe('commulative require', function() {
   describe('length', function() {

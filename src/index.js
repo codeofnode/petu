@@ -7,11 +7,8 @@ import { join } from 'path';
 
 const files = fs.readdirSync(join(__dirname)).filter(file => (!file.startsWith('.') && file.endsWith('.js')));
 
-const toExport = {};
-
 files.forEach((file) => {
-  toExport[file.slice(0, -3)] =
-    require(join(__dirname, file)); // eslint-disable-line import/no-dynamic-require,global-require
+  exports[file.slice(0, -3)] =
+    require(join(__dirname, file)) // eslint-disable-line import/no-dynamic-require,global-require
+      .default;
 });
-
-export default toExport;
