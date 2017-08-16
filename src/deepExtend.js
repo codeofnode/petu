@@ -112,7 +112,12 @@ class DeepExtend {
         return;
       }
 
-      Object.keys(obj).forEach((key) => {
+      const objkys = Object.keys(obj);
+      const obagl = objkys.length;
+      let minus = 0;
+
+      for (let key, y = 0; y < obagl; y += 1) {
+        key = objkys[y];
         src = target[key]; // source value
         val = obj[key]; // new value
 
@@ -124,7 +129,12 @@ class DeepExtend {
          * instead of extending.
          */
         } else if (val === DeepExtend.DelKey) {
-          delete target[key];
+          if (Array.isArray(target)) {
+            target.splice(key - minus, 1);
+            minus += 1;
+          } else {
+            delete target[key];
+          }
 
         /**
          * if new value isn't object then just overwrite by new value
@@ -153,7 +163,7 @@ class DeepExtend {
         } else {
           target[key] = DeepExtend.deepExtend(src, val);
         }
-      });
+      }
     });
     return target;
   }
