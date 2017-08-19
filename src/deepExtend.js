@@ -3,7 +3,7 @@ import isNoPOJO from './isNoPOJO';
 import cloneNoPOJO from './cloneNoPOJO';
 
 let DEL_KEY = '$del';
-let OVER_KEY = '$overwrite';
+let REP_KEY = '$rep';
 
 /**
  * @module deepExtend
@@ -12,7 +12,7 @@ let OVER_KEY = '$overwrite';
 class DeepExtend {
 
   /**
-   * the delete key  - if found, that value must be removed from root. whether its array or object
+   * the delete key - if found, that value must be removed from root. whether its array or object
    * @example
    * // returns [0,2];
    * petu.deepExtend([0,1,2],[0,'$del',2]);
@@ -22,13 +22,13 @@ class DeepExtend {
   }
 
   /**
-   * the overwrite key - if found at index 0 for array, the rest of array valued will be overwrriten
+   * the rep key - the next record will be as it is as given.
    * @example
-   * // returns [3,4];
-   * petu.deepExtend([0,1,2],['$overwrite',3,4]);
+   * // returns [[],1,2];
+   * petu.deepExtend([{},1,2],['$rep',[]]);
    */
-  static get OverKey() {
-    return OVER_KEY;
+  static get RepKey() {
+    return REP_KEY;
   }
 
   /*
@@ -40,11 +40,11 @@ class DeepExtend {
   }
 
   /*
-   * Set the over key
+   * Set the rep key
    * @param {string} vl - the new del key
    */
-  static set OverKey(vl) {
-    OVER_KEY = vl;
+  static set RepKey(vl) {
+    REP_KEY = vl;
   }
 
   /**
@@ -60,20 +60,34 @@ class DeepExtend {
     if (ln < defln) {
       ln = defln;
     }
-    for (let on = 0, item, z = 0; z < ln; z += 1, on += 1) {
+
+    for (let on = 0, minus = 0, item, z = 0, defi; z < ln; z += 1, on += 1) {
       item = arr[z];
-      if ((item === null || item === undefined) && Array.isArray(def)) {
-        clone[on] = (typeof def[z] !== 'object' || def[z] === null) ? def[z] : DeepExtend.deepExtend({}, def[z]);
+      defi = z - minus;
+      if (clone[on - 1] === DeepExtend.RepKey) {
+        clone[on] = item;
+        on -= 1;
+        clone.splice(on, 1);
+      } else if (item === null || item === undefined) {
+        if (defi < defln && Array.isArray(def)) {
+          clone[on] = (typeof def[defi] !== 'object' || def[defi] === null)
+            ? def[defi]
+            : DeepExtend.deepExtend({}, def[defi]);
+        }
       } else if (item === DeepExtend.DelKey) {
         clone.splice(on, 1);
         on -= 1;
+      } else if (item === DeepExtend.RepKey) {
+        clone[on] = arr[z];
+        ln += 1;
+        minus += 1;
       } else if (typeof item === 'object') {
         if (Array.isArray(item)) {
-          clone[on] = DeepExtend.deepCloneArray(item, (def[z] && def[z]));
+          clone[on] = DeepExtend.deepCloneArray(item, def[defi] && def[defi]);
         } else if (isNoPOJO(item)) {
           clone[on] = cloneNoPOJO(item);
         } else {
-          clone[on] = DeepExtend.deepExtend(((Array.isArray(def) && typeof def[z] === 'object') ? def[z] : {}), item);
+          clone[on] = DeepExtend.deepExtend(Array.isArray(def) && typeof def[defi] === 'object' ? def[defi] : {}, item);
         }
       } else {
         clone[on] = item;
@@ -102,39 +116,31 @@ class DeepExtend {
       return args[0];
     }
 
-    const target = args[0];
+    let target = args[0];
     let val;
     let src;
 
-    args.forEach((obj) => {
+    args.forEach((obj, ind) => {
       // skip argument if isn't an object, is null, or is an array
-      if (typeof obj !== 'object' || obj === null) {
+      if (!ind || typeof obj !== 'object' || obj === null) {
         return;
       }
 
-      const objkys = Object.keys(obj);
-      const obagl = objkys.length;
-      let minus = 0;
+      if (Array.isArray(target) && Array.isArray(obj)) {
+        target = DeepExtend.deepCloneArray(obj, target);
+        return;
+      }
 
-      for (let key, y = 0; y < obagl; y += 1) {
-        key = objkys[y];
+      Object.keys(obj).forEach((key) => {
         src = target[key]; // source value
         val = obj[key]; // new value
 
-        // recursion prevention
         if (val === target || val === null) {
+          // recursion prevention
+          // ignore
 
-        /**
-         * if new value isn't object then just overwrite by new value
-         * instead of extending.
-         */
         } else if (val === DeepExtend.DelKey) {
-          if (Array.isArray(target)) {
-            target.splice(key - minus, 1);
-            minus += 1;
-          } else {
-            delete target[key];
-          }
+          delete target[key];
 
         /**
          * if new value isn't object then just overwrite by new value
@@ -163,7 +169,7 @@ class DeepExtend {
         } else {
           target[key] = DeepExtend.deepExtend(src, val);
         }
-      }
+      });
     });
     return target;
   }

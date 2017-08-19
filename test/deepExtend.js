@@ -15,8 +15,7 @@ describe('Deep Extend', function() {
     });
     it('array',function(){
       const db = new Array(2), abc = [{a : 'b', c : [{ d : 'e', g : 'b' }], f: { g: 'h' } },'b'];
-      main(db,abc);
-      assert.deepEqual(db,abc);
+      assert.deepEqual(main(db,abc),abc);
     });
   });
 
@@ -107,8 +106,39 @@ describe('Deep Extend', function() {
           c: { test1: 123, test2: 321 }
         },
       };
-      main(obj1, { d: { b: ['$overwrite', 8,0] } });
+      main(obj1, { d: { b: ['$del','$del','$del', 8 ,0] } });
       assert.deepEqual(obj1.d.b, [8,0]);
+    });
+    it('special keys',function(){
+      const ab = {a:[1,2,3,4]};
+      assert.deepEqual(main(ab,{a:['$rep',2,'$rep',1]}), { a: [ 2, 1, 3, 4 ] });
+      assert.equal(ab.a.length, 4);
+
+      assert.deepEqual(main(ab,{a:['$del','$rep',9,'$rep',8]}), { a: [ 9, 8, 4 ] });
+      assert.equal(ab.a.length, 3);
+
+      assert.deepEqual(main(ab,{a:[null, '$del']}), { a: [ 9, 4 ] });
+      assert.equal(ab.a.length, 2);
+    });
+  });
+  describe('root arrays', function() {
+    it('should work on del key',function(){
+      let ab = [1,2,3,4];
+      ab = main(ab,[null, '$del']);
+      assert.deepEqual(ab, [1, 3, 4]);
+      assert.equal(ab.length, 3);
+    });
+    it('should work on rep key',function(){
+      let ab = [1,{},3,4];
+      ab = main(ab,[null, '$rep', []]);
+      assert.deepEqual(ab, [1, [], 3, 4]);
+      assert.equal(ab.length, 4);
+    });
+    it('should work on del+add key',function(){
+      let ab = [1,2,3,4];
+      ab = main(ab,[null, '$rep', 9, '$del']);
+      assert.deepEqual(ab, [1, 9, 4]);
+      assert.equal(ab.length, 3);
     });
   });
 });
