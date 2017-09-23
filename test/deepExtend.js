@@ -120,6 +120,10 @@ describe('Deep Extend', function() {
       assert.deepEqual(main(ab,{a:[null, '$del']}), { a: [ 9, 4 ] });
       assert.equal(ab.a.length, 2);
     });
+    it('special keys replace',function(){
+      const ab = {a:[1,2,3,4]};
+      assert.deepEqual(main(ab, { a: { ab : 3, $rep: '$rep' } }), { a: { ab : 3 }})
+    });
   });
   describe('root arrays', function() {
     it('should work on del key',function(){

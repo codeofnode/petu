@@ -1,6 +1,6 @@
 {
   "name": "petu",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "It is a simple collection of pure javascript utilities to cut your lines of code.",
   "scripts": {
     "build": "rm -rf dist && mkdir dist && ./node_modules/.bin/json -f package.json -e \"delete this.devDependencies;delete this.scripts;delete this.nyc;delete this.babel\" > dist/package.json && ./node_modules/.bin/babel src -d dist && cp README.md dist/",

@@ -146,7 +146,10 @@ class DeepExtend {
          * if new value isn't object then just overwrite by new value
          * instead of extending.
          */
-        } else if (typeof val !== 'object') {
+        } else if ((typeof val !== 'object') || (val[DeepExtend.RepKey] === DeepExtend.RepKey)) {
+          if (typeof val === 'object') {
+            delete val[DeepExtend.RepKey];
+          }
           target[key] = val;
 
         // just clone arrays (and recursive clone objects inside)
